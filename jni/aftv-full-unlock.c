@@ -12,6 +12,44 @@
 #define UNLOCK_SIZE     12
 #define SIGNATURE_SIZE 256
 
+ //
+// Function used to parse the build.prop to check if you can unlock or not
+char *android_product_name_get(char product_name[256])
+{
+    FILE *fp = NULL;
+    char line[256];
+    char *pname;
+
+
+    fp = fopen("/system/build.prop", "r");
+    if (fp == NULL) {
+        fprintf(stderr,
+            "omapconf: %s(): could not open '/system/build.prop'?!\n", __func__);
+        return NULL;
+    }
+
+    /* Retrieve pastry */
+    while (fgets(line, 256, fp) != NULL) {
+        /* Remove endind '\n' */
+        line[strlen(line) - 1] = '\0';
+
+        /* Looking for the "ro.build.version.release" property line */
+        if (strstr(line, "ro.build.version.incremental=") == NULL)
+            continue;
+        fclose(fp);
+        pname = strchr(line, '=');
+        pname += sizeof(char);
+        if (pname == NULL) {
+            return NULL;
+        }
+        strncpy(product_name, pname, 256);
+        return product_name;
+    }
+
+    fclose(fp);
+    return NULL;
+}
+
 // http://stackoverflow.com/questions/356090/how-to-compute-the-nth-root-of-a-very-big-integer
 static BIGNUM *nearest_cuberoot(BIGNUM *in)
 {
@@ -64,7 +102,7 @@ static BIGNUM *nearest_cuberoot(BIGNUM *in)
 
 int main(int argc, char **argv)
 {
-    char c_manfid[9], c_serial[11], c_unlock[SIGNATURE_SIZE], c_unlock_maximum[SIGNATURE_SIZE];
+    char c_manfid[9], c_serial[11], c_unlock[SIGNATURE_SIZE], c_unlock_maximum[SIGNATURE_SIZE],product_name[256];
     int fd;
     unsigned long ul_manfid, ul_serial;
     fd = open("/sys/block/mmcblk0/device/manfid", O_RDONLY);
@@ -76,6 +114,49 @@ int main(int argc, char **argv)
     ul_manfid = strtoul(c_manfid, NULL, 16);
     ul_serial = strtoul(c_serial, NULL, 16);
     snprintf(c_unlock, sizeof(c_unlock), "0x%02lx%08lx", ul_manfid, ul_serial);
+
+    // Add in some error checking so we dont brick Amazon FireTvs
+
+    // Get the version of the Amazon FireTv Software to see if we can unlock or not
+    android_product_name_get(product_name);
+
+    //Check Versions for Unlock
+    if (strstr(product_name, "51.1.0.0") != NULL)
+                fprintf(stderr,"You can unlock your bootloder without downgrade. Congrats\n");
+    if (strstr(product_name, "51.1.0.1") != NULL)
+        fprintf(stderr,"You can unlock your bootloder without downgrade. Congrats\n");
+    if (strstr(product_name, "51.1.0.2") != NULL)
+                fprintf(stderr,"You can unlock your bootloder without downgrade. Congrats\n");
+    if (strstr(product_name, "51.1.1.0") != NULL)
+    {
+        fprintf(stderr,"You need to downgrade to 51.1.0.2\n");
+        exit(1);
+    }
+    if (strstr(product_name, "51.1.2.0") != NULL)
+    {
+        fprintf(stderr,"No Root Or Downgrade SORRY!\n");
+        exit(1);        
+    }   
+    if (strstr(product_name, "51.1.3.0") != NULL)
+    {
+        fprintf(stderr,"No Root Or Downgrade SORRY!\n");
+        exit(1);        
+    }   
+    if (strstr(product_name, "51.1.4.0") != NULL)
+    {
+        fprintf(stderr,"No Root Or Downgrade SORRY!\n");
+        exit(1);        
+    }   
+    if (strstr(product_name, "51.1.4.1") != NULL)
+    {
+        fprintf(stderr,"No Root Or Downgrade SORRY!\n");
+        exit(1);        
+    }   
+    if (strstr(product_name, "51.1.4.2") != NULL)
+    {
+        fprintf(stderr,"No Root Or Downgrade SORRY!\n");
+        exit(1);        
+    }   
 
     // Calculate a maximum BIGNUM with FF trailing padding
     memset(c_unlock + UNLOCK_SIZE, 0xFF, SIGNATURE_SIZE - UNLOCK_SIZE);
